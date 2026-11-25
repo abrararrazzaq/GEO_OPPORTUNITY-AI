@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: geoopportunity
+      POSTGRES_USER: geoopportunity
+      POSTGRES_PASSWORD: geoopportunity
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U geoopportunity -d geoopportunity"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://geoopportunity:geoopportunity@db:5432/geoopportunity
+      WORLDPOP_RASTER_PATH: /data/raw/worldpop-semarang-2023.tif
+    ports: ["8000:8000"]
+    volumes: ["./data/raw:/data/raw:ro"]
+    depends_on:
+      db: {condition: service_healthy}
+  web:
+    build: ./frontend
+    environment:
+      API_URL: http://api:8000/api/v1
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+      API_PROXY_TARGET: http://api:8000
+    ports: ["3000:3000"]
+    depends_on: [api]
+volumes:
+  postgres_data:
